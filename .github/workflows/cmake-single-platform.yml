@@ -1,13 +1,10 @@
 name: Build and Run LINPACK
-
 on:
 push:
 pull_request:
-
 jobs:
 build-and-run:
 runs-on: ubuntu-latest
-
 steps:
   - name: Checkout repository
     uses: actions/checkout@v4
@@ -25,4 +22,6 @@ steps:
 
   - name: Run LINPACK benchmark
     run: |
+      ./bin/linpack 100
+      ./bin/linpack 500
       ./bin/linpack 1000
