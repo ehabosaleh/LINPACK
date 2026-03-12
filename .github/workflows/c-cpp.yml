@@ -1,27 +1,29 @@
-name: Build and Run LINPACK
+name: Build LINPACK
+
 on:
 push:
 pull_request:
+
 jobs:
-build-and-run:
+build:
 runs-on: ubuntu-latest
+
+
 steps:
   - name: Checkout repository
     uses: actions/checkout@v4
 
-  - name: Install build tools
+  - name: Install dependencies
     run: |
       sudo apt-get update
       sudo apt-get install -y cmake build-essential
 
-  - name: Configure
+  - name: Configure project
     run: cmake -S . -B build
 
-  - name: Build
+  - name: Build project
     run: cmake --build build
 
   - name: Run LINPACK benchmark
-    run: |
-      ./bin/linpack 100
-      ./bin/linpack 500
-      ./bin/linpack 1000
+    run: ./bin/linpack 1000
+
