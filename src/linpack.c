@@ -64,6 +64,8 @@ static REAL second   (void);
 static void *mempool;
 
 
+static ssize_t detect_llc_size();
+
 void main(void)
 
     {
@@ -879,4 +881,20 @@ static REAL second(void)
     return ((REAL)((REAL)clock()/(REAL)CLOCKS_PER_SEC));
     }
 
+static ssize_t detect_llc_size(){
+    FILE*f=fopen("/sys/devices/system/cpu/cpu0/cache/index3/size", "r");
+    if(!f){
+        printf("LLC detection failed. Using default 32MB\n");
+        return 32*1024*1024;
+    }
+    size_t size;
+    char unit;
+    fscanf(f,"%zu%c",&size,&unit);
+    if(unit=='K')
+        return size*1024;
+    else if(unit=='M')
+        return size*1024*1024;
+    else
+        return size;
 
+}
