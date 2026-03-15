@@ -11,4 +11,4 @@ jobs:
       - uses: actions/checkout@v4
       - run: cmake -S . -B build
       - run: cmake --build build
-      - run: ./bin/linpack 1000
+      - run: ./bin/linpack --mem-bound=y
