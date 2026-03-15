@@ -77,18 +77,18 @@ int main(int argc, char**argv){
     	int     arsize;
     	long    arsize2d,memreq,nreps=1;
     	size_t  malloc_arg;
-	char mem_bound='y';
-	
+	char llc_scale='n';
+	unsigned int factor=1;
 	for (int i=1;i<argc;i++) {
-         	if(strncmp(argv[i], "--array-size=", 13) == 0) 
+         	if(strncmp(argv[i], "--array-size=", 13) == 0){ 
 				arsize=atoi(argv[i]+13);
+		}
          	else if(strncmp(argv[i], "--iters=", 8) == 0) 
 				nreps=atoi(argv[i] + 8);
          	
-		else if(strncmp(argv[i],"--mem-bound=",12)==0){
-				mem_bound=argv[i][12];	
-				if(mem_bound!='N'&&mem_bound!='n'&&mem_bound!='y'&&mem_bound!='Y')
-					mem_bound='y';
+		else if(strncmp(argv[i],"--llc-scale=",12)==0){
+				factor=atoi(argv[i]+12);	
+				llc_scale='y';
 		}		
 		else if(strcmp(argv[i],"--help")==0||strcmp(argv[i],"-h")== 0){
              		usage(argv[0]);
@@ -99,9 +99,9 @@ int main(int argc, char**argv){
          	}
      	} 
 
-        if (mem_bound=='Y'||mem_bound=='y'){
+        if (llc_scale=='y'){
             	arsize=detect_llc_size();
-		arsize*=4;
+		arsize*=factor;
 		arsize=sqrt(arsize/sizeof(double));
 		//printf("array size: %d \n",arsize);	
 	}
@@ -950,7 +950,7 @@ void usage(const char *argv0) {
           "Usage: %s [--array-size=N] [--mem-bound=N] [--iters=N]\n"
           "Examples:\n"
           "  %s --array-size=2000 \n"
-          "  %s --array-size=100 --mem-bound=n \n",
+          "  %s--llc-scale=n \n",
           argv0, argv0, argv0);
       exit(EXIT_FAILURE);
   }
