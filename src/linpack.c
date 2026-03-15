@@ -65,8 +65,8 @@ static REAL second   (void);
 
 static void *mempool;
 
-static ssize_t detect_cache_cpuinfo();
-static ssize_t detect_llc_size();
+static size_t detect_llc_size();
+static size_t detect_cache_cpuinfo();
 
 void main(void){
     char    buf[80];
@@ -81,7 +81,7 @@ void main(void){
         if (buf[0]=='q' || buf[0]=='Q')
             break;
         if (buf[0]=='\0' || buf[0]=='\n')
-            arsize=get_llc_size();
+            arsize=detect_llc_size();
         else
             arsize=atoi(buf);
 
@@ -912,7 +912,7 @@ static size_t detect_cache_cpuinfo(){
     while(fgets(line,sizeof(line),f)){
         if(strstr(line,"cache size")) {
             size_t size;
-            char unit[2]
+            char unit[2];
             sscanf(line,"cache size : %zu %s",size,unit);
             if(strcmp(unit,"KB")==0)
                 return size*1024;
@@ -920,6 +920,7 @@ static size_t detect_cache_cpuinfo(){
                 return size*1024*1024;
             else
                 return size;
-    }
+    	}
 
+	}
 }
