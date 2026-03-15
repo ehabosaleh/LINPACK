@@ -913,7 +913,7 @@ static size_t detect_cache_cpuinfo(){
         if(strstr(line,"cache size")) {
             size_t size;
             char unit[2];
-            sscanf(line,"cache size : %zu %s",size,unit);
+            sscanf(line,"cache size : %zu %s",&size,unit);
             if(strcmp(unit,"KB")==0)
                 return size*1024;
             else if(strcmp(unit,"MB")==0)
