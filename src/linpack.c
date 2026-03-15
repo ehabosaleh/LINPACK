@@ -69,58 +69,73 @@ static void *mempool;
 static size_t detect_llc_size();
 static size_t detect_cache_cpuinfo();
 
-void main(void){
-    char    buf[80];
-    int     arsize;
-    long    arsize2d,memreq,nreps;
-    size_t  malloc_arg;
+void usage(const char *argv0);
 
-    while (1)
-        {
-        printf("Enter array size, q to quit [200], or Enter new line to detect the cache size: ");
-        fgets(buf,79,stdin);
-        if (buf[0]=='q' || buf[0]=='Q')
-            	break;
-        if (buf[0]=='\0' || buf[0]=='\n'){
+
+int main(int argc, char**argv){
+	char    buf[80];
+    	int     arsize;
+    	long    arsize2d,memreq,nreps=1;
+    	size_t  malloc_arg;
+	char mem_bound='y';
+	
+	for (int i=1;i<argc;i++) {
+         	if(strncmp(argv[i], "--array-size=", 13) == 0) 
+				arsize=atoi(argv[i]+13);
+         	else if(strncmp(argv[i], "--iters=", 8) == 0) 
+				nreps=atoi(argv[i] + 8);
+         	
+		else if(strncmp(argv[i],"--mem-bound=",12)==0){
+				mem_bound=argv[i][12];	
+				if(mem_bound!='N'&&mem_bound!='n'&&mem_bound!='y'&&mem_bound!='Y')
+					mem_bound='y';
+		}		
+		else if(strcmp(argv[i],"--help")==0||strcmp(argv[i],"-h")== 0){
+             		usage(argv[0]);
+         	} 
+		else {
+             		fprintf(stderr, "Unknown arg: %s\n", argv[i]);
+             		usage(argv[0]);
+         	}
+     	} 
+
+        if (mem_bound=='Y'||mem_bound=='y'){
             	arsize=detect_llc_size();
 		arsize*=4;
 		arsize=sqrt(arsize/sizeof(double));
-		printf("array size: %d \n",arsize);	
+		//printf("array size: %d \n",arsize);	
 	}
 		
-        else
-            arsize=atoi(buf);
-
 
         arsize/=2;
         arsize*=2;
         if (arsize<10)
             {
             printf("Too small.\n");
-            continue;
+            return 1;
             }
         arsize2d = (long)arsize*(long)arsize;
         memreq=arsize2d*sizeof(REAL)+(long)arsize*sizeof(REAL)+(long)arsize*sizeof(int);
         printf("Memory required:  %ldK.\n",(memreq+512L)>>10);
         malloc_arg=(size_t)memreq;
-        if (malloc_arg!=memreq || (mempool=malloc(malloc_arg))==NULL)
-            {
-            printf("Not enough memory available for given array size.\n\n");
-            continue;
-            }
+        if (malloc_arg!=memreq || (mempool=malloc(malloc_arg))==NULL){
+            	printf("Not enough memory available for given array size.\n\n");
+        	return 1;
+	}
         printf("\n\nLINPACK benchmark, %s precision.\n",PREC);
         printf("Machine precision:  %d digits.\n",BASE10DIG);
         printf("Array size %d X %d.\n",arsize,arsize);
         printf("Average rolled and unrolled performance:\n\n");
-        printf("    Reps Time(s) DGEFA   DGESL  OVERHEAD    KFLOPS\n");
+        printf("    Reps Time(s) DGEFA   DGESL  OVERHEAD    GFLOPS\n");
         printf("----------------------------------------------------\n");
         nreps=1;
         while (linpack(nreps,arsize)<10.)
             nreps*=2;
         free(mempool);
         printf("\n");
-        }
-    }
+        return 0;
+}
+	
 
 
 static REAL linpack(long nreps,int arsize)
@@ -132,7 +147,8 @@ static REAL linpack(long nreps,int arsize)
     long   i,arsize2d;
 
     lda = arsize;
-    n = arsize/2;
+    //n = arsize/2;
+    n=arsize;/*Ehab:stress the memory hierarchy*/
     arsize2d = (long)arsize*(long)arsize;
     ops=((2.0*n*n*n)/3.0+2.0*n*n);
     a=(REAL *)mempool;
@@ -175,7 +191,7 @@ static REAL linpack(long nreps,int arsize)
     printf("%8ld %6.2f %6.2f%% %6.2f%% %6.2f%%  %9.3f\n",
             nreps,totalt,100.*tdgefa/totalt,
             100.*tdgesl/totalt,100.*toverhead/totalt,
-            kflops);
+            kflops/1000);
     return(totalt);
     }
 
@@ -930,3 +946,12 @@ static size_t detect_cache_cpuinfo(){
 
 	}
 }
+void usage(const char *argv0) {
+      fprintf(stderr,
+          "Usage: %s [--array-size=N] [--mem-bound=N] [--iters=N]\n"
+          "Examples:\n"
+          "  %s --array-size=2000 \n"
+          "  %s --array-size=100 --mem-bound=n \n",
+          argv0, argv0, argv0);
+      exit(EXIT_FAILURE);
+  }
