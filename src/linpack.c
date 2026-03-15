@@ -29,6 +29,7 @@
 #include <float.h>
 #include<cpuid.h>
 #include<string.h>
+#include<math.h>
 
 #define DP
 
@@ -76,12 +77,17 @@ void main(void){
 
     while (1)
         {
-        printf("Enter array size, q to quit [200], or enter to detect the cache size: ");
+        printf("Enter array size, q to quit [200], or Enter new line to detect the cache size: ");
         fgets(buf,79,stdin);
         if (buf[0]=='q' || buf[0]=='Q')
-            break;
-        if (buf[0]=='\0' || buf[0]=='\n')
-            arsize=detect_llc_size();
+            	break;
+        if (buf[0]=='\0' || buf[0]=='\n'){
+            	arsize=detect_llc_size();
+		arsize*=4;
+		arsize=sqrt(arsize/sizeof(double));
+		printf("array size: %d \n",arsize);	
+	}
+		
         else
             arsize=atoi(buf);
 
