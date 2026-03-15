@@ -27,6 +27,8 @@
 #include <math.h>
 #include <time.h>
 #include <float.h>
+#include<cpuid.h>
+#include<string.h>
 
 #define DP
 
@@ -63,12 +65,10 @@ static REAL second   (void);
 
 static void *mempool;
 
-
+static ssize_t detect_cache_cpuinfo();
 static ssize_t detect_llc_size();
 
-void main(void)
-
-    {
+void main(void){
     char    buf[80];
     int     arsize;
     long    arsize2d,memreq,nreps;
@@ -76,14 +76,16 @@ void main(void)
 
     while (1)
         {
-        printf("Enter array size (q to quit) [200]:  ");
+        printf("Enter array size, q to quit [200], or enter to detect the cache size: ");
         fgets(buf,79,stdin);
         if (buf[0]=='q' || buf[0]=='Q')
             break;
         if (buf[0]=='\0' || buf[0]=='\n')
-            arsize=200;
+            arsize=get_llc_size();
         else
             arsize=atoi(buf);
+
+
         arsize/=2;
         arsize*=2;
         if (arsize<10)
@@ -881,7 +883,7 @@ static REAL second(void)
     return ((REAL)((REAL)clock()/(REAL)CLOCKS_PER_SEC));
     }
 
-static ssize_t detect_llc_size(){
+static size_t detect_llc_size(){
     FILE*f=fopen("/sys/devices/system/cpu/cpu0/cache/index3/size", "r");
     if(!f){
         printf("LLC detection failed. Using default 32MB\n");
@@ -896,5 +898,28 @@ static ssize_t detect_llc_size(){
         return size*1024*1024;
     else
         return size;
+
+}
+
+static size_t detect_cache_cpuinfo(){
+    FILE*f=fopen("/proc/cpuinfo","r");
+    if(!f){
+        printf("LLC detection failed. Using default 32MB\n");
+        return 32*1024*1024;
+    }
+
+    char line[256];
+    while(fgets(line,sizeof(line),f)){
+        if(strstr(line,"cache size")) {
+            size_t size;
+            char unit[2]
+            sscanf(line,"cache size : %zu %s",size,unit);
+            if(strcmp(unit,"KB")==0)
+                return size*1024;
+            else if(strcmp(unit,"MB")==0)
+                return size*1024*1024;
+            else
+                return size;
+    }
 
 }
