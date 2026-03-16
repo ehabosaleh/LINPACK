@@ -52,3 +52,14 @@ The original LINPACK benchmark performs factorization on a matrix of size `arsiz
 
 This implementation uses the full matrix size: `n = arsize`. This change simplifies the memory model and increases the computational workload, which is more appropriate for modern systems with large memory capacity.
 
+## Compile
+
+Create a build directory and run CMake:
+
+```bash
+mkdir build
+cd build
+cmake ..
+cmake --build .
+```
+After compilation the executable will be located at: `bin/linpack`. Example: `./bin/linpack --array-size=2000`
