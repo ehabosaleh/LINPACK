@@ -41,8 +41,14 @@ The benchmark can automatically compute the matrix size relative to the CPU's la
 ```
 ./linpack --llc-scale=4 // the matrix size is 4 times the cache size
 ```
-3. Mixed:
 The application **ignores `--array-size`** and computes the matrix size from `--llc-scale`.
 ```
 ./linpack --array-size=100 --llc-scale=4 
 ```
+
+## Matrix Dimension
+
+The original LINPACK benchmark performs factorization on a matrix of size `arsize / 2`, even though memory is allocated for an `arsize × arsize` matrix.
+
+This implementation uses the full matrix size: `n = arsize`. This change simplifies the memory model and increases the computational workload, which is more appropriate for modern systems with large memory capacity.
+
