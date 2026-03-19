@@ -950,7 +950,7 @@ void usage(const char *argv0) {
           "Usage: %s [--array-size=N] [--mem-bound=N] [--iters=N]\n"
           "Examples:\n"
           "  %s --array-size=2000 \n"
-          "  %s--llc-scale=n \n",
+          "  %s --llc-scale=n \n",
           argv0, argv0, argv0);
       exit(EXIT_FAILURE);
   }
