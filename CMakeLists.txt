@@ -3,5 +3,9 @@ project(LINPACK LANGUAGES C)
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/bin/)
 
+enable_testing()
 add_executable(linpack src/linpack.c)
 target_link_libraries(linpack m)
+
+add_test(NAME init_test COMMAND linpack --array-size=200)
+
