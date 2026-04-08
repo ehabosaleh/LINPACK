@@ -68,6 +68,7 @@ static void *mempool;
 
 static size_t detect_llc_size();
 static size_t detect_cache_cpuinfo();
+static size_t detect_cache_cpuid();
 
 void usage(const char *argv0);
 
@@ -925,8 +926,8 @@ static size_t detect_llc_size(){
 static size_t detect_cache_cpuinfo(){
 	FILE*f=fopen("/proc/cpuinfo","r");
   	if(!f){
-        	printf("LLC detection failed. Using default 32MB\n");
-        	return 32*1024*1024;
+        	printf("LLC detection failed. Using cpuid\n");
+        	return detect_cache_cpuid();
     	}
 
     	char line[256];
@@ -945,6 +946,28 @@ static size_t detect_cache_cpuinfo(){
 	return size;
 	
 }
+
+size_t detect_cache_cpuid(){
+        size_t size;
+        unsigned int eax,ebx,ecx,edx;
+
+        for(int i=0;;i++){
+                __cpuid_count(4,i,eax,ebx,ecx,edx);
+                int cache_type=eax&0x1f;
+                if(cache_type==0) break;
+                int level=(eax >> 5) & 0x7;
+                if(level==3){
+                        int ways=((ebx >> 22) & 0x3FF) + 1;
+                        int partitions=((ebx >> 12) & 0x3FF) + 1;
+                        int line_size = (ebx & 0xFFF) + 1;
+                        int sets= ecx + 1;
+
+                        size=(size_t)ways*partitions*line_size*sets;
+                }
+        }
+        return size;
+}
+
 void usage(const char *argv0) {
       fprintf(stderr,
           "Usage: %s [--array-size=N] [--mem-bound=N] [--iters=N]\n"
