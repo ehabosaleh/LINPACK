@@ -27,7 +27,10 @@
 #include <math.h>
 #include <time.h>
 #include <float.h>
-#include<cpuid.h>
+#if defined(__x86_64__) || defined(__i386__)
+	#include<cpuid.h>
+#endif
+
 #include<string.h>
 #include<math.h>
 
