@@ -27,6 +27,10 @@
 #include <math.h>
 #include <time.h>
 #include <float.h>
+#if defined(__APPLE__)
+#include <sys/types.h>
+#include <sys/sysctl.h>
+#endif
 #if defined(__x86_64__) || defined(__i386__)
 	#include<cpuid.h>
 #endif
@@ -104,7 +108,12 @@ int main(int argc, char**argv){
      	} 
 
         if (llc_scale=='y'){
-            	arsize=detect_llc_size();
+                size_t cache_size=detect_llc_size();
+                if (cache_size==0) {
+                    fprintf(stderr,"Cache size unavailable. Use --array-size=N.\n");
+                    return 1;
+                }
+                arsize=cache_size;
 		arsize*=factor;
 		arsize=sqrt(arsize/sizeof(double));
 		//printf("array size: %d \n",arsize);	
@@ -910,20 +919,34 @@ static REAL second(void)
     }
 
 static size_t detect_llc_size(){
-	size_t size;
+#if defined(__APPLE__)
+    size_t size=0, length=sizeof(size);
+    if (sysctlbyname("hw.l3cachesize",&size,&length,NULL,0)==0 && size>0)
+        return size;
+    size=0;
+    length=sizeof(size);
+    if (sysctlbyname("hw.l2cachesize",&size,&length,NULL,0)==0 && size>0)
+        return size;
+    return 0;
+#else
+    size_t size=0;
 	FILE*f=fopen("/sys/devices/system/cpu/cpu0/cache/index3/size", "r");
     	if(!f){
         	printf("LLC detection failed. Using system file cpuinfo\n");
-        	size=detect_cache_cpuinfo();
+            return detect_cache_cpuinfo();
     	}
 	char unit;
-    	fscanf(f,"%zu%c",&size,&unit);
+    if (fscanf(f,"%zu%c",&size,&unit)!=2) {
+        fclose(f);
+        return detect_cache_cpuinfo();
+    }
     	if(unit=='K')
         	size=size*1024;
     	else if(unit=='M')
         	size=size*1024*1024;
 	fclose(f);
 	return size;
+#endif
 }
 
 static size_t detect_cache_cpuinfo(){
@@ -934,11 +957,11 @@ static size_t detect_cache_cpuinfo(){
     	}
 
     	char line[256];
-    	size_t size;
+        size_t size=0;
 	while(fgets(line,sizeof(line),f)){
         	if(strstr(line,"cache size")) {
-            	char unit[2];
-            	sscanf(line,"cache size : %zu %s",&size,unit);
+                char unit[3];
+                if (sscanf(line,"cache size : %zu %2s",&size,unit)!=2) continue;
             	if(strcmp(unit,"KB")==0)
                 	size=size*1024;
             	else if(strcmp(unit,"MB")==0)
@@ -951,7 +974,8 @@ static size_t detect_cache_cpuinfo(){
 }
 
 size_t detect_cache_cpuid(){
-        size_t size;
+        size_t size=0;
+#if defined(__x86_64__) || defined(__i386__)
         unsigned int eax,ebx,ecx,edx;
 
         for(int i=0;;i++){
@@ -968,6 +992,7 @@ size_t detect_cache_cpuid(){
                         size=(size_t)ways*partitions*line_size*sets;
                 }
         }
+#endif
         return size;
 }
 
