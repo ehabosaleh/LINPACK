@@ -13,7 +13,7 @@
 ** - Defaults to double precision.
 ** - Averages ROLLed and UNROLLed performance.
 ** - User selectable array sizes.
-** - Automatically does enough repetitions to take at least 10 CPU seconds.
+** - Automatically does enough repetitions to take at least 10 wall-clock seconds.
 ** - Prints machine precision.
 ** - ANSI prototyping.
 **
@@ -25,7 +25,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
-#include <time.h>
+#include <omp.h>
 #include <float.h>
 #if defined(__APPLE__)
 #include <sys/types.h>
@@ -331,6 +331,7 @@ static void dgefa(REAL *a,int lda,int n,int *ipvt,int *info,int roll)
 
                     /* row elimination with column indexing */
 
+                    #pragma omp parallel for private(t) schedule(static)
                     for (j = kp1; j < n; j++)
                         {
                         t = a[lda*j+l];
@@ -385,6 +386,7 @@ static void dgefa(REAL *a,int lda,int n,int *ipvt,int *info,int roll)
 
                     /* row elimination with column indexing */
 
+                    #pragma omp parallel for private(t) schedule(static)
                     for (j = kp1; j < n; j++)
                         {
                         t = a[lda*j+l];
@@ -913,10 +915,9 @@ static int idamax(int n,REAL *dx,int incx)
 
 
 static REAL second(void)
-
-    {
-    return ((REAL)((REAL)clock()/(REAL)CLOCKS_PER_SEC));
-    }
+{
+    return omp_get_wtime();
+}
 
 static size_t detect_llc_size(){
 #if defined(__APPLE__)
