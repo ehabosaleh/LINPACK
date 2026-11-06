@@ -288,124 +288,61 @@ static void matgen(REAL *a,int lda,int n,REAL *b,REAL *norma)
 **
 */
 static void dgefa(REAL *a,int lda,int n,int *ipvt,int *info,int roll)
+{
+    int l=0, nonzero=0;
+    *info=0;
+    if (n<=0) return;
 
+    /* Keep one team alive for the entire factorization. */
+    #pragma omp parallel default(none) shared(a,lda,n,ipvt,info,roll,l,nonzero)
     {
-    REAL t;
-    int idamax(),j,k,kp1,l,nm1;
-
-    /* gaussian elimination with partial pivoting */
-
-    if (roll)
+        REAL t;
+        for (int k=0; k<n-1; k++)
         {
-        *info = 0;
-        nm1 = n - 1;
-        if (nm1 >=  0)
-            for (k = 0; k < nm1; k++)
+            /* Only one thread selects the pivot and computes multipliers. */
+            #pragma omp single
+            {
+                l=idamax(n-k,&a[lda*k+k],1)+k;
+                ipvt[k]=l;
+                nonzero=(a[lda*k+l]!=ZERO);
+                if (nonzero)
                 {
-                kp1 = k + 1;
-
-                /* find l = pivot index */
-
-                l = idamax(n-k,&a[lda*k+k],1) + k;
-                ipvt[k] = l;
-
-                /* zero pivot implies this column already
-                   triangularized */
-
-                if (a[lda*k+l] != ZERO)
+                    if (l!=k)
                     {
-
-                    /* interchange if necessary */
-
-                    if (l != k)
-                        {
-                        t = a[lda*k+l];
-                        a[lda*k+l] = a[lda*k+k];
-                        a[lda*k+k] = t;
-                        }
-
-                    /* compute multipliers */
-
-                    t = -ONE/a[lda*k+k];
-                    dscal_r(n-(k+1),t,&a[lda*k+k+1],1);
-
-                    /* row elimination with column indexing */
-
-                    #pragma omp parallel for private(t) schedule(static)
-                    for (j = kp1; j < n; j++)
-                        {
-                        t = a[lda*j+l];
-                        if (l != k)
-                            {
-                            a[lda*j+l] = a[lda*j+k];
-                            a[lda*j+k] = t;
-                            }
-                        daxpy_r(n-(k+1),t,&a[lda*k+k+1],1,&a[lda*j+k+1],1);
-                        }
+                        t=a[lda*k+l];
+                        a[lda*k+l]=a[lda*k+k];
+                        a[lda*k+k]=t;
                     }
-                else
-                    (*info) = k;
+                    t=-ONE/a[lda*k+k];
+                    if (roll) dscal_r(n-k-1,t,&a[lda*k+k+1],1);
+                    else dscal_ur(n-k-1,t,&a[lda*k+k+1],1);
                 }
-        ipvt[n-1] = n-1;
-        if (a[lda*(n-1)+(n-1)] == ZERO)
-            (*info) = n-1;
-        }
-    else
-        {
-        *info = 0;
-        nm1 = n - 1;
-        if (nm1 >=  0)
-            for (k = 0; k < nm1; k++)
+                else *info=k;
+            }
+            /* The single barrier publishes the pivot before column updates. */
+            #pragma omp for schedule(static)
+            for (int j=k+1; j<n; j++)
+            {
+                if (nonzero)
                 {
-                kp1 = k + 1;
-
-                /* find l = pivot index */
-
-                l = idamax(n-k,&a[lda*k+k],1) + k;
-                ipvt[k] = l;
-
-                /* zero pivot implies this column already
-                   triangularized */
-
-                if (a[lda*k+l] != ZERO)
+                    t=a[lda*j+l];
+                    if (l!=k)
                     {
-
-                    /* interchange if necessary */
-
-                    if (l != k)
-                        {
-                        t = a[lda*k+l];
-                        a[lda*k+l] = a[lda*k+k];
-                        a[lda*k+k] = t;
-                        }
-
-                    /* compute multipliers */
-
-                    t = -ONE/a[lda*k+k];
-                    dscal_ur(n-(k+1),t,&a[lda*k+k+1],1);
-
-                    /* row elimination with column indexing */
-
-                    #pragma omp parallel for private(t) schedule(static)
-                    for (j = kp1; j < n; j++)
-                        {
-                        t = a[lda*j+l];
-                        if (l != k)
-                            {
-                            a[lda*j+l] = a[lda*j+k];
-                            a[lda*j+k] = t;
-                            }
-                        daxpy_ur(n-(k+1),t,&a[lda*k+k+1],1,&a[lda*j+k+1],1);
-                        }
+                        a[lda*j+l]=a[lda*j+k];
+                        a[lda*j+k]=t;
                     }
-                else
-                    (*info) = k;
+                    if (roll)
+                        daxpy_r(n-k-1,t,&a[lda*k+k+1],1,&a[lda*j+k+1],1);
+                    else
+                        daxpy_ur(n-k-1,t,&a[lda*k+k+1],1,&a[lda*j+k+1],1);
                 }
-        ipvt[n-1] = n-1;
-        if (a[lda*(n-1)+(n-1)] == ZERO)
-            (*info) = n-1;
+            }
+            /* The for barrier finishes all updates before the next pivot. */
         }
     }
+    ipvt[n-1]=n-1;
+    if (a[lda*(n-1)+n-1]==ZERO) *info=n-1;
+}
 
 
 /*
